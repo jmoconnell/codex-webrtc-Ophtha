@@ -1,0 +1,10 @@
+{
+  "dependencies": {
+    "@executeautomation/playwright-mcp-server": "^1.0.6"
+  },
+  "_npx": {
+    "packages": [
+      "@executeautomation/playwright-mcp-server"
+    ]
+  }
+}
