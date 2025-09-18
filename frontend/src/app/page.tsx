@@ -39,8 +39,11 @@ export default function HomePage() {
   const [authToken, setAuthToken] = useState<string | null>(null);
   const [micEnabled, setMicEnabled] = useState(false);
   const [micControlAvailable, setMicControlAvailable] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [chatInput, setChatInput] = useState("");
 
   const audioRef = useRef<HTMLAudioElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const sessionHandleRef = useRef<GreetingSessionHandle | null>(null);
 
   useEffect(() => {
@@ -95,8 +98,8 @@ export default function HomePage() {
   }, []);
 
   const handleStartSession = async () => {
-    if (!authToken || !audioRef.current) {
-      setErrorMessage("Audio device or authentication missing.");
+    if (!authToken || !audioRef.current || !videoRef.current) {
+      setErrorMessage("Audio or video device or authentication missing.");
       return;
     }
 
@@ -115,6 +118,7 @@ export default function HomePage() {
       const handle = await startRealtimeGreeting({
         session: realtimeSession,
         audioElement: audioRef.current,
+        videoElement: videoRef.current,
         onTranscript: (text) => setTranscript(text),
         onStatus: (message) => setStatusMessage(message),
         onError: handleRealtimeError,
@@ -200,6 +204,69 @@ export default function HomePage() {
       },
     ];
   }, [timeline]);
+
+  const handleCaptureImage = () => {
+    if (!videoRef.current || !sessionHandleRef.current) {
+      return;
+    }
+
+    const video = videoRef.current;
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      return;
+    }
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    canvas.toBlob((blob) => {
+      if (blob) {
+        sessionHandleRef.current?.sendImage(blob);
+      }
+    }, "image/jpeg");
+  };
+
+  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+    }
+  };
+
+  const handleDocumentUpload = async () => {
+    if (!selectedFile || !sessionHandleRef.current) {
+      return;
+    }
+
+    const pdfjs = await import("pdfjs-dist");
+    pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+      "pdfjs-dist/build/pdf.worker.mjs",
+      import.meta.url,
+    ).toString();
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      if (event.target?.result) {
+        const pdf = await pdfjs.getDocument({ data: event.target.result as ArrayBuffer }).promise;
+        let text = "";
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const content = await page.getTextContent();
+          text += content.items.map((item) => ("str" in item ? item.str : "")).join(" ");
+        }
+        sessionHandleRef.current?.sendText(text);
+      }
+    };
+    reader.readAsArrayBuffer(selectedFile);
+  };
+
+  const handleSendChat = () => {
+    if (!chatInput || !sessionHandleRef.current) {
+      return;
+    }
+    sessionHandleRef.current.sendText(chatInput);
+    setChatInput("");
+  };
 
   return (
     <main className={styles.main}>
@@ -311,6 +378,30 @@ export default function HomePage() {
                     {micEnabled ? "Mute Microphone" : "Enable Microphone"}
                   </button>
                 )}
+                {sessionStage === "connected" && (
+                  <button
+                    className={styles.buttonSecondary}
+                    type="button"
+                    onClick={handleCaptureImage}
+                    style={{ marginLeft: "0.75rem" }}
+                  >
+                    Capture Image
+                  </button>
+                )}
+                <div style={{ marginTop: "1rem" }}>
+                  <input
+                    type="file"
+                    accept="application/pdf"
+                    onChange={handleFileChange}
+                  />
+                  <button
+                    className={styles.buttonSecondary}
+                    onClick={handleDocumentUpload}
+                    disabled={!selectedFile || sessionStage !== "connected"}
+                  >
+                    Upload Document
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -318,6 +409,13 @@ export default function HomePage() {
           {errorMessage && <p className={styles.error}>{errorMessage}</p>}
 
           <audio className={styles.audioControl} ref={audioRef} controls />
+          <video
+            className={styles.videoControl}
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+          />
         </div>
 
         <div className={styles.card}>
@@ -325,6 +423,23 @@ export default function HomePage() {
           <div className={styles.transcript}>
             {transcript ||
               "Assistant transcript will appear here once the greeting begins."}
+          </div>
+          <div className={styles.chatInputContainer}>
+            <input
+              type="text"
+              className={styles.chatInput}
+              placeholder="Type a message..."
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSendChat()}
+            />
+            <button
+              className={styles.buttonSecondary}
+              onClick={handleSendChat}
+              disabled={!chatInput || sessionStage !== "connected"}
+            >
+              Send
+            </button>
           </div>
 
           <h3 style={{ marginTop: "1.5rem", marginBottom: "0.5rem" }}>

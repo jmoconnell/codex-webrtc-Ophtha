@@ -61,7 +61,7 @@ export async function realtimeRoutes(app: FastifyInstance) {
     const bodyPayload = {
       model: config.openAiRealtimeModel,
       voice: parseBody.data.voice ?? "verse",
-      modalities: ["text", "audio"],
+      modalities: ["text", "audio", "video"],
       instructions,
     } satisfies Record<string, unknown>;
 

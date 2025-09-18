@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "pdfjs-dist": "^5.4.149"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0"
+  }
+}

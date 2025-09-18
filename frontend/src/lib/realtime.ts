@@ -28,11 +28,14 @@ export interface GreetingSessionHandle {
   close: () => void;
   timeline: GreetingTimeline;
   setMicrophoneEnabled: (enabled: boolean) => void;
+  sendImage: (image: Blob) => void;
+  sendText: (text: string) => void;
 }
 
 export interface StartGreetingOptions {
   session: RealtimeSessionDetails;
   audioElement: HTMLAudioElement;
+  videoElement: HTMLVideoElement;
   onTranscript?: (text: string) => void;
   onStatus?: (message: string) => void;
   onError?: (error: Error) => void;
@@ -110,6 +113,7 @@ function extractTextDelta(payload: unknown): string | undefined {
 export async function startRealtimeGreeting({
   session,
   audioElement,
+  videoElement,
   onTranscript,
   onStatus,
   onError,
@@ -318,7 +322,10 @@ export async function startRealtimeGreeting({
       echoCancellation: true,
       noiseSuppression: true,
     },
+    video: true,
   });
+
+  videoElement.srcObject = localStream;
 
   localStream.getTracks().forEach((track) => pc.addTrack(track, localStream));
 
@@ -562,11 +569,53 @@ export async function startRealtimeGreeting({
     throw error;
   }
 
+  const sendImage = (image: Blob) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64Image = (reader.result as string).split(",")[1];
+      const event = {
+        type: "conversation.item.create",
+        item: {
+          type: "message",
+          role: "user",
+          content: [
+            {
+              type: "input_image",
+              image: base64Image,
+              detail: "high",
+            },
+          ],
+        },
+      };
+      controlChannel?.send(JSON.stringify(event));
+    };
+    reader.readAsDataURL(image);
+  };
+
+  const sendText = (text: string) => {
+    const event = {
+      type: "conversation.item.create",
+      item: {
+        type: "message",
+        role: "user",
+        content: [
+          {
+            type: "input_text",
+            text,
+          },
+        ],
+      },
+    };
+    controlChannel?.send(JSON.stringify(event));
+  };
+
   return {
     close: cleanup,
     timeline,
     setMicrophoneEnabled: (enabled: boolean) => {
       setLocalMicState(enabled);
     },
+    sendImage,
+    sendText,
   };
 }
