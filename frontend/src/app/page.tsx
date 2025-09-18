@@ -233,7 +233,16 @@ export default function HomePage() {
     }
   };
 
-  
+  const handleDocumentUpload = async () => {
+    if (!selectedFile || !sessionHandleRef.current) {
+      return;
+    }
+
+    const pdfjs = await import("pdfjs-dist");
+    pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+      "pdfjs-dist/build/pdf.worker.mjs",
+      import.meta.url,
+    ).toString();
 
     const reader = new FileReader();
     reader.onload = async (event) => {
