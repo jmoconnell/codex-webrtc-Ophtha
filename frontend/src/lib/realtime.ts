@@ -35,7 +35,6 @@ export interface GreetingSessionHandle {
 export interface StartGreetingOptions {
   session: RealtimeSessionDetails;
   audioElement: HTMLAudioElement;
-  videoElement: HTMLVideoElement;
   onTranscript?: (text: string) => void;
   onStatus?: (message: string) => void;
   onError?: (error: Error) => void;
@@ -113,7 +112,6 @@ function extractTextDelta(payload: unknown): string | undefined {
 export async function startRealtimeGreeting({
   session,
   audioElement,
-  videoElement,
   onTranscript,
   onStatus,
   onError,
@@ -322,10 +320,7 @@ export async function startRealtimeGreeting({
       echoCancellation: true,
       noiseSuppression: true,
     },
-    video: true,
   });
-
-  videoElement.srcObject = localStream;
 
   localStream.getTracks().forEach((track) => pc.addTrack(track, localStream));
 
