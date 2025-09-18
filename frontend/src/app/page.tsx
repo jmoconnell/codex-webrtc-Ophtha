@@ -238,8 +238,11 @@ export default function HomePage() {
       return;
     }
 
-    const pdfjs = await import("pdfjs-dist/build/pdf");
-    pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+    const pdfjs = await import("pdfjs-dist");
+    pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+      "pdfjs-dist/build/pdf.worker.mjs",
+      import.meta.url,
+    ).toString();
 
     const reader = new FileReader();
     reader.onload = async (event) => {
