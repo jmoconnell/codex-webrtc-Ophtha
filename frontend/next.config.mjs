@@ -1,6 +1,4 @@
 /** @type {import('next').NextConfig} */
-const nextConfig = {
-  transpilePackages: ["pdfjs-dist"],
-};
+const nextConfig = {};
 
 export default nextConfig;
